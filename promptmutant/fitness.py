@@ -4,10 +4,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 from transformers import BertModel, BertTokenizer
 from datasets import load_dataset
 import torch
+import logging
+import random
+
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def bert_encode(texts):
+    logging.getLogger("transformers.configuration_utils").setLevel(logging.ERROR)
+    logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
+    
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = BertModel.from_pretrained('bert-base-uncased')
     model.eval()
@@ -19,9 +25,10 @@ def bert_encode(texts):
     return embeddings
 
 def cosine_similarity_score(prompt, training_set):
-    shuffled_set = training_set.shuffle(seed=42)
-    question_set = shuffled_set["question"][:3]
-    answer_set = shuffled_set["answer"][:3]
+    seed = random.randint(0, 1000000)
+    shuffled_set = training_set.shuffle(seed=seed)
+    question_set = shuffled_set["question"][:5]
+    answer_set = shuffled_set["answer"][:5]
 
     total_similarity = 0
     for i, question in enumerate(question_set):
@@ -33,8 +40,8 @@ def cosine_similarity_score(prompt, training_set):
             ]
         )
         response = completion.choices[0].message["content"]
-        print("\033[33m" + response + "\033[0m")  # prints the response in orange
-        print("\033[32m" + answer_set[i] + "\033[0m")  # prints the answer_set in green
+        print("\033[33m" + response + "\033[0m")
+        print("\033[32m" + answer_set[i] + "\033[0m")
         response_embedding = bert_encode([response])
         answer_embedding = bert_encode([answer_set[i]])
         similarity = cosine_similarity(response_embedding, answer_embedding)

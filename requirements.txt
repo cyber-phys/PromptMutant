@@ -1,0 +1,6 @@
+scikit-learn
+scipy
+transformers
+datasets
+openai
+torch

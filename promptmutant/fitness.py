@@ -20,9 +20,10 @@ def bert_encode(texts):
 
 def cosine_similarity_score(prompt, training_set):
     shuffled_set = training_set.shuffle(seed=42)
-    question_set = shuffled_set["question"][:10]
-    answer_set = shuffled_set["answer"][:10]
+    question_set = shuffled_set["question"][:3]
+    answer_set = shuffled_set["answer"][:3]
 
+    total_similarity = 0
     for i, question in enumerate(question_set):
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -37,8 +38,11 @@ def cosine_similarity_score(prompt, training_set):
         response_embedding = bert_encode([response])
         answer_embedding = bert_encode([answer_set[i]])
         similarity = cosine_similarity(response_embedding, answer_embedding)
+        total_similarity += similarity[0][0]
         print(similarity)
-        # return similarity
+        
+    average_similarity = total_similarity / len(question_set)
+    return average_similarity
 
 if __name__ == "__main__":
     prompt = "Think out-loud while you answer the question"

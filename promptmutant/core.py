@@ -188,8 +188,9 @@ class PromptMutant:
     
     #TODO: test this !!!
     def eda_rank_and_index_mutation(self, prompt_population, mutation_prompt):
-        prompt_population.sort(key=lambda x: x[2])
-        filtered_prompt_population = prompt_similarity_filer(prompt_population)
+        prompt_population_copy = prompt_population.copy()
+        prompt_population_copy.sort(key=lambda x: x[2])
+        filtered_prompt_population = prompt_similarity_filer(prompt_population_copy)
         print(filtered_prompt_population)
         length = len(filtered_prompt_population)
         prompt = "INSTRUCTION: " + mutation_prompt + "\n A List of Responses in descending order of score. " + str(length + 1) + " is the best response. It resembles " + str(length) + " more than it does (1)" + "\n".join([prompt[0] for prompt in filtered_prompt_population])
@@ -247,9 +248,25 @@ class PromptMutant:
         )
         return completion.choices[0].message["content"]
     
+    #TODO: test this !!!
+    # Reread paper, may need to change implimentation
+    def lineage_mutation(self, prompt_population):
+        prompt_population_copy = prompt_population.copy()
+        prompt_population_copy.sort(key=lambda x: x[2])
+        self.genotypes.append(prompt_population_copy[0])
+        prompt = "GENOTYPES FOUND IN ASCENDING ORDER OF QUALITY:" + "\n".join([prompt[0] for prompt in self.genotypes])
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return completion.choices[0].message["content"]
+    
     def mutate(self, gene_index):
         gene = self.population[gene_index]
-        random_number = random.randint(0, 6)
+        random_number = random.randint(0, 7)
         if random_number == 0:
             print("EDA PROMPT MUTATION")
             response = self.eda_prompt_mutation(self.population)
@@ -286,6 +303,11 @@ class PromptMutant:
             score = cosine_similarity_score(response, self.training_dataset)
             self.population[gene_index] = (response, mutation_p, score)
             pass
+        elif random_number == 6:
+            print("LINEAGE BASED MUTATION")
+            response = self.lineage_mutation(self.population)
+            score = cosine_similarity_score(response, self.training_dataset)
+            self.population[gene_index] = (response, gene[1], score)
         else:
             print("ZERO ORDER GENERATION")
             response = self.zero_order_prompt_generation(self.problem_description)

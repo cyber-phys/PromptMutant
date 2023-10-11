@@ -2,11 +2,11 @@ import os
 import openai
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from fitness import cosine_similarity_score, bert_encode
+from .fitness import cosine_similarity_score, bert_encode
 from datasets import load_dataset
 import random
 from pprint import pprint
-from llm import openai_chat, openai_instruct
+from .llm import openai_chat, openai_instruct
 
 def prompt_similarity_filer(prompt_population):
     pp = prompt_population.copy()
@@ -123,14 +123,15 @@ class PromptMutant:
                                 "Does the above text make sense? What seems wrong with it? Here is an attempt to fix it:",
                                 "The above working out has some errors, here is a version with the errors fixed."
                                 ]
-        self.genotypes=[]
+        self.genotype = []
         self.number_of_generations = 5
         self.population = [] ## (prompt, mutation, score)
-        self.training_dataset = load_dataset("gsm8k", "main")["train"]
+        self.training_dataset = []
         self.problem_description = "Solve the math word problem, giving your answer as an arabic numeral"
         self.llm = openai_instruct
 
-    def initialization(self, problem_description, number_of_prompts):
+    def initialization(self, problem_description, number_of_prompts, dataset):
+        self.training_dataset = load_dataset(dataset, "main")["train"]
         for i in range(number_of_prompts):
             thinking_style = random.choice(self.thinking_styles)
             mutation_prompt = random.choice(self.mutation_prompt)
@@ -277,8 +278,8 @@ if __name__ == "__main__":
     problem_description = "Solve the math word problem, giving your answer as an arabic numeral"
     number_of_prompts = 5
     prompt_mutant = PromptMutant()
-    prompt_mutant.initialization(problem_description, number_of_prompts)
-
+    prompt_mutant.initialization(problem_description, number_of_prompts, "gsm8k")
+    
     # Mutate 10 times
     for j in range(10):
         print("\033[91m Generation: \033[0m", j)

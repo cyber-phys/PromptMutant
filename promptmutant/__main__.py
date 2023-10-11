@@ -1,5 +1,8 @@
 import argparse
 from .core import PromptMutant
+from pprint import pprint
+from IPython.display import clear_output
+from time import sleep
 
 def main():
     parser = argparse.ArgumentParser(description="Run Promptbreeder")
@@ -43,8 +46,10 @@ def main():
     for j in range(args.nMutations):
         print("\033[91m Generation: \033[0m", j)
         for i, gene in enumerate(prompt_mutant.population):
-            print(gene)
             prompt_mutant.mutate(i)
+        clear_output(wait=True)
+        for z, gene in enumerate(prompt_mutant.population):
+          pprint("\033[94m{}\033[0m".format(gene))
     
     # Print Evolved Prompts
     for i, gene in enumerate(prompt_mutant.population):

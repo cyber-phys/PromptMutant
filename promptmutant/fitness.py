@@ -30,13 +30,10 @@ def cosine_similarity_score(prompt, training_set, llm):
     total_similarity = 0
     for i, question in enumerate(question_set):
         response = llm(prompt + "\n" + question)
-        print("\033[33m" + response + "\033[0m")
-        print("\033[32m" + answer_set[i] + "\033[0m")
         response_embedding = bert_encode([response])
         answer_embedding = bert_encode([answer_set[i]])
         similarity = cosine_similarity(response_embedding, answer_embedding)
         total_similarity += similarity[0][0]
-        print(similarity)
         
     average_similarity = total_similarity / len(question_set)
     return average_similarity

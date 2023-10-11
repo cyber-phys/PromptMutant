@@ -18,9 +18,6 @@ def prompt_similarity_filer(prompt_population):
             check_embedding = bert_encode([item_check[0]])
             similarity_score = cosine_similarity(item_embedding, check_embedding)
             if similarity_score > 0.95:
-                print("item removed: ")
-                print(item[0])
-                print(item_check[0])
                 pp.remove(item_check)
     return pp
 
@@ -155,9 +152,7 @@ class PromptMutant:
     #TODO: test this !!!
     def eda_prompt_mutation(self, prompt_population):
         filtered_prompt_population = prompt_similarity_filer(prompt_population)
-        print(filtered_prompt_population)
         prompt = "Continue this list with new task-prompts:\n" + "\n".join([prompt[0] for prompt in filtered_prompt_population])
-        pprint("\033[91m {}\033[00m" .format(prompt))
         response = self.llm(prompt)
         return response
     
@@ -166,10 +161,8 @@ class PromptMutant:
         prompt_population_copy = prompt_population.copy()
         prompt_population_copy.sort(key=lambda x: x[2])
         filtered_prompt_population = prompt_similarity_filer(prompt_population_copy)
-        print(filtered_prompt_population)
         length = len(filtered_prompt_population)
         prompt = "INSTRUCTION: " + mutation_prompt + "\n A List of Responses in descending order of score. " + str(length + 1) + " is the best response. It resembles " + str(length) + " more than it does (1)" + "\n".join([prompt[0] for prompt in filtered_prompt_population])
-        pprint("\033[91m {}\033[00m" .format(prompt))
         response = self.llm(prompt)
         return response
     
@@ -193,7 +186,6 @@ class PromptMutant:
         question_set = shuffled_set["question"][:3]
         answer_set = shuffled_set["answer"][:3]
         prompt = "I gave a friend an instruction and some advice. Here are the correct examples of his workings out:\n" + "Q. " + question_set[0] + "\nA. " + answer_set[0] + "\nQ. " + question_set[1] + "\nA. " + answer_set[1] + "\nThe instruction was:\n"
-        pprint("\033[91m {}\033[00m" .format(prompt))
         response = self.llm(prompt)
         return response
     
@@ -226,48 +218,40 @@ class PromptMutant:
         gene = self.population[gene_index]
         random_number = random.randint(0, 7)
         if random_number == 0:
-            print("EDA PROMPT MUTATION")
             response = self.eda_prompt_mutation(self.population)
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 1:
-            print("FIRST ORDER GENERATION")
             response = self.first_order_prompt_generation(gene[0], gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 2:
-            print("EDA RANK ORDER MUTATION")
             response = self.eda_rank_and_index_mutation(self.population, gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 3:
-            print("LAMARCKIN MUTATION")
             response = self.lamarckian_mutation(gene[0])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 4:
-            print("ZERO ORDER HYPER MUTATION")
             response, mutation_p  = self.zero_order_hyper_mutation(self.problem_description, gene[0])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, mutation_p, score)
             pass
         elif random_number == 5:
-            print("FIRST ORDER HYPER MUTATION")
             response, mutation_p = self.first_order_hyper_mutation(gene[0], gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, mutation_p, score)
             pass
         elif random_number == 6:
-            print("LINEAGE BASED MUTATION")
             response = self.lineage_mutation(self.population)
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
         else:
-            print("ZERO ORDER GENERATION")
             response = self.zero_order_prompt_generation(self.problem_description)
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
@@ -284,7 +268,7 @@ if __name__ == "__main__":
     for j in range(10):
         print("\033[91m Generation: \033[0m", j)
         for i, gene in enumerate(prompt_mutant.population):
-            print(gene)
+            pprint(gene)
             prompt_mutant.mutate(i)
     
     for i, gene in enumerate(prompt_mutant.population):

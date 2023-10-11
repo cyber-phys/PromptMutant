@@ -264,6 +264,21 @@ class PromptMutant:
         )
         return completion.choices[0].message["content"]
     
+    #TODO: test this !!!
+    def prompt_crossover(self, gene_index):
+        # 10% chance to perform crossover
+        if random.random() < 0.1:
+            # Select another gene based on fitness proportionate selection
+            fitness_scores = [gene[2] for gene in self.population]
+            total_fitness = sum(fitness_scores)
+            probabilities = [score / total_fitness for score in fitness_scores]
+            selected_gene_index = np.random.choice(range(len(self.population)), p=probabilities)
+
+            # Perform crossover: replace task-prompt of current gene with that of selected gene
+            selected_gene = self.population[selected_gene_index]
+            current_gene = self.population[gene_index]
+            self.population[gene_index] = (selected_gene[0], current_gene[1], current_gene[2])   
+
     def mutate(self, gene_index):
         gene = self.population[gene_index]
         random_number = random.randint(0, 7)
@@ -314,6 +329,7 @@ class PromptMutant:
             score = cosine_similarity_score(response, self.training_dataset)
             self.population[gene_index] = (response, gene[1], score)
             pass
+        self.prompt_crossover(gene_index)
 
 if __name__ == "__main__":
     problem_description = "Solve the math word problem, giving your answer as an arabic numeral"

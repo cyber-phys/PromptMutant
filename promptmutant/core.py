@@ -202,8 +202,8 @@ class PromptMutant:
     def lineage_mutation(self, prompt_population):
         prompt_population_copy = prompt_population.copy()
         prompt_population_copy.sort(key=lambda x: x[2])
-        self.genotypes.append(prompt_population_copy[0])
-        prompt = "GENOTYPES FOUND IN ASCENDING ORDER OF QUALITY:" + "\n".join([prompt[0] for prompt in self.genotypes])
+        self.genotype.append(prompt_population_copy[0])
+        prompt = "GENOTYPES FOUND IN ASCENDING ORDER OF QUALITY:" + "\n".join([prompt[0] for prompt in self.genotype])
         response = self.llm(prompt)
         return response
     

@@ -6,7 +6,6 @@ from datasets import load_dataset
 import torch
 import logging
 import random
-from .llm import openai_chat, openai_instruct
 
 def bert_encode(texts):
     logging.getLogger("transformers.configuration_utils").setLevel(logging.ERROR)

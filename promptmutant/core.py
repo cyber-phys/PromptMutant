@@ -6,8 +6,7 @@ from fitness import cosine_similarity_score, bert_encode
 from datasets import load_dataset
 import random
 from pprint import pprint
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
+from llm import openai_chat, openai_instruct
 
 def prompt_similarity_filer(prompt_population):
     pp = prompt_population.copy()
@@ -129,47 +128,28 @@ class PromptMutant:
         self.population = [] ## (prompt, mutation, score)
         self.training_dataset = load_dataset("gsm8k", "main")["train"]
         self.problem_description = "Solve the math word problem, giving your answer as an arabic numeral"
+        self.llm = openai_instruct
 
     def initialization(self, problem_description, number_of_prompts):
         for i in range(number_of_prompts):
             thinking_style = random.choice(self.thinking_styles)
             mutation_prompt = random.choice(self.mutation_prompt)
             prompt = thinking_style + " " + mutation_prompt + " " + "\nINSTRUCTION: " + problem_description + "\nINSTRUCTION MUTANT = "
-            completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            response = completion.choices[0].message["content"]
-            score = cosine_similarity_score(response, self.training_dataset)
+            response = self.llm(prompt)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population.append((response, mutation_prompt, score))
 
     #TODO: test this !!!
     def zero_order_prompt_generation(self, problem_description):
         prompt  = "A list of 100 hinits:\n" + problem_description
-        completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return completion.choices[0].message["content"]
+        response = self.llm(prompt)
+        return response
     
     #TODO: test this !!!
     def first_order_prompt_generation(self, task_prompt, mutation_prompt):
-        prompt = mutation_prompt + "INSTRUCTION: " + task_prompt
-        completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": "INSTRUCTION MUTANT: "}
-            ]
-        )
-        return completion.choices[0].message["content"]
+        prompt = mutation_prompt + "INSTRUCTION: " + task_prompt + "\nINSTRUCTION MUTANT: "
+        response = self.llm(prompt)
+        return response
     
     #TODO: test this !!!
     def eda_prompt_mutation(self, prompt_population):
@@ -177,14 +157,8 @@ class PromptMutant:
         print(filtered_prompt_population)
         prompt = "Continue this list with new task-prompts:\n" + "\n".join([prompt[0] for prompt in filtered_prompt_population])
         pprint("\033[91m {}\033[00m" .format(prompt))
-        completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return completion.choices[0].message["content"]
+        response = self.llm(prompt)
+        return response
     
     #TODO: test this !!!
     def eda_rank_and_index_mutation(self, prompt_population, mutation_prompt):
@@ -195,41 +169,21 @@ class PromptMutant:
         length = len(filtered_prompt_population)
         prompt = "INSTRUCTION: " + mutation_prompt + "\n A List of Responses in descending order of score. " + str(length + 1) + " is the best response. It resembles " + str(length) + " more than it does (1)" + "\n".join([prompt[0] for prompt in filtered_prompt_population])
         pprint("\033[91m {}\033[00m" .format(prompt))
-        completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return completion.choices[0].message["content"]
+        response = self.llm(prompt)
+        return response
     
     #TODO: test this !!!
     def zero_order_hyper_mutation(self, problem_description, task_prompt):
         thinking_style = random.choice(self.thinking_styles)
         prompt  = thinking_style + " " + problem_description
-        mutation_completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        mutation_prompt = mutation_completion.choices[0].message["content"]
+        mutation_prompt = self.llm(prompt)
         return self.first_order_prompt_generation(task_prompt, mutation_prompt), mutation_prompt
   
     #TODO: test this !!!
     def first_order_hyper_mutation(self, task_prompt, mutation_prompt):
         prompt  = "Please summarize and improve the following instruction: " + mutation_prompt
-        mutation_completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        mutation_p = mutation_completion.choices[0].message["content"]
-        return self.first_order_prompt_generation(task_prompt, mutation_p), mutation_p
+        mutated_prompt = self.llm(prompt)
+        return self.first_order_prompt_generation(task_prompt, mutated_prompt), mutated_prompt
 
     #TODO: test this !!!
     def lamarckian_mutation(self, task_prompt):
@@ -239,14 +193,8 @@ class PromptMutant:
         answer_set = shuffled_set["answer"][:3]
         prompt = "I gave a friend an instruction and some advice. Here are the correct examples of his workings out:\n" + "Q. " + question_set[0] + "\nA. " + answer_set[0] + "\nQ. " + question_set[1] + "\nA. " + answer_set[1] + "\nThe instruction was:\n"
         pprint("\033[91m {}\033[00m" .format(prompt))
-        completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return completion.choices[0].message["content"]
+        response = self.llm(prompt)
+        return response
     
     #TODO: test this !!!
     # Reread paper, may need to change implimentation
@@ -255,14 +203,8 @@ class PromptMutant:
         prompt_population_copy.sort(key=lambda x: x[2])
         self.genotypes.append(prompt_population_copy[0])
         prompt = "GENOTYPES FOUND IN ASCENDING ORDER OF QUALITY:" + "\n".join([prompt[0] for prompt in self.genotypes])
-        completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return completion.choices[0].message["content"]
+        response = self.llm(prompt)
+        return response
     
     #TODO: test this !!!
     def prompt_crossover(self, gene_index):
@@ -285,48 +227,48 @@ class PromptMutant:
         if random_number == 0:
             print("EDA PROMPT MUTATION")
             response = self.eda_prompt_mutation(self.population)
-            score = cosine_similarity_score(response, self.training_dataset)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 1:
             print("FIRST ORDER GENERATION")
             response = self.first_order_prompt_generation(gene[0], gene[1])
-            score = cosine_similarity_score(response, self.training_dataset)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 2:
             print("EDA RANK ORDER MUTATION")
             response = self.eda_rank_and_index_mutation(self.population, gene[1])
-            score = cosine_similarity_score(response, self.training_dataset)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 3:
             print("LAMARCKIN MUTATION")
             response = self.lamarckian_mutation(gene[0])
-            score = cosine_similarity_score(response, self.training_dataset)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 4:
             print("ZERO ORDER HYPER MUTATION")
             response, mutation_p  = self.zero_order_hyper_mutation(self.problem_description, gene[0])
-            score = cosine_similarity_score(response, self.training_dataset)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, mutation_p, score)
             pass
         elif random_number == 5:
             print("FIRST ORDER HYPER MUTATION")
             response, mutation_p = self.first_order_hyper_mutation(gene[0], gene[1])
-            score = cosine_similarity_score(response, self.training_dataset)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, mutation_p, score)
             pass
         elif random_number == 6:
             print("LINEAGE BASED MUTATION")
             response = self.lineage_mutation(self.population)
-            score = cosine_similarity_score(response, self.training_dataset)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
         else:
             print("ZERO ORDER GENERATION")
             response = self.zero_order_prompt_generation(self.problem_description)
-            score = cosine_similarity_score(response, self.training_dataset)
+            score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.population[gene_index] = (response, gene[1], score)
             pass
         self.prompt_crossover(gene_index)

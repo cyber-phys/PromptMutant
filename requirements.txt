@@ -4,4 +4,4 @@ transformers
 datasets
 openai
 torch
-sqlite3
+IPython

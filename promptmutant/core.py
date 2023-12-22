@@ -173,17 +173,35 @@ class PromptMutant:
         results = self.cursor.fetchall()
         return(results)
     
-    def update_prompt_from_db(self, response, score, prompt_id, generation, run_id):
+    def update_prompt_from_db(self, response, score, generation, prompt_id, run_id, mutation_id):
         current_datetime = datetime.now()
         timestamp_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
-        self.cursor.execute("INSERT INTO Prompts (text, generation, created_at, run_id) VALUES (?, ?, ?, ?)",
-                            (response, generation, timestamp_str, run_id))
-        prompt_id = self.cursor.lastrowid
+        self.cursor.execute("INSERT INTO Prompts (text, generation, created_at, run_id, mutation_prompt_id) VALUES (?, ?, ?, ?, ?)",
+                            (response, generation, timestamp_str, run_id, mutation_id))
+        new_prompt_id = self.cursor.lastrowid
         self.cursor.execute("INSERT INTO FitnessScores (prompt_id, run_id, score, scored_at) VALUES(?, ?, ?, ?)",
-                            (prompt_id, run_id, score, timestamp_str))
-        self.cursor.execute("INSERT INTO MutationPrompts (text, generation, created_at, run_id, prompt_id) VALUES (?, ?, ?, ?, ?)",
-                            (mutation_prompt, generation, timestamp_str, run_id, prompt_id))
+                            (new_prompt_id, run_id, score, timestamp_str))
+        self.cursor.execute("INSERT INTO PromptGenealogy (child_id, parent_id) VALUES (?,?)",
+                            (prompt_id, new_prompt_id))
         self.conn.commit()
+
+    def hyper_update_prompt_from_db(self, response, mutation_prompt, score, generation, prompt_id, run_id, mutation_id):
+        current_datetime = datetime.now()
+        timestamp_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        self.cursor.execute("INSERT INTO MutationPrompts (text, generation, created_at, run_id) VALUES (?, ?, ?, ?)",
+                    (mutation_prompt, generation, timestamp_str, run_id))
+        new_mutation_id = self.cursor.lastrowid
+        self.cursor.execute("INSERT INTO Prompts (text, generation, created_at, run_id, mutation_prompt_id) VALUES (?, ?, ?, ?, ?)",
+                            (response, generation, timestamp_str, run_id, new_mutation_id))
+        new_prompt_id = self.cursor.lastrowid
+        self.cursor.execute("INSERT INTO FitnessScores (prompt_id, run_id, score, scored_at) VALUES(?, ?, ?, ?)",
+                            (new_prompt_id, run_id, score, timestamp_str))
+        self.cursor.execute("INSERT INTO PromptGenealogy (child_id, parent_id) VALUES (?,?)",
+                            (prompt_id, new_prompt_id))
+        self.cursor.execute("INSERT INTO MutationPromptGenealogy (child_id, parent_id) VALUES (?,?)",
+                            (mutation_id, new_mutation_id))
+        self.conn.commit()
+
     #TODO: test this !!!
     def zero_order_prompt_generation(self, problem_description):
         prompt  = "A list of 100 hinits:\n" + problem_description

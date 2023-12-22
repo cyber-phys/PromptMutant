@@ -56,6 +56,14 @@ def initialize_database():
             FOREIGN KEY (parent_id) REFERENCES Prompts (prompt_id)
         );
 
+        -- Parent-Child Relationship for Mutation Prompts
+        CREATE TABLE MutationPromptGenealogy (
+            child_id INTEGER NOT NULL,
+            parent_id INTEGER NOT NULL,
+            FOREIGN KEY (child_id) REFERENCES Prompts (prompt_id),
+            FOREIGN KEY (parent_id) REFERENCES Prompts (prompt_id)
+        );
+
         -- Fitness Scores Table
         CREATE TABLE FitnessScores (
             score_id INTEGER PRIMARY KEY AUTOINCREMENT,

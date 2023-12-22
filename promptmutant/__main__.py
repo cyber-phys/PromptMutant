@@ -83,7 +83,13 @@ def initialize_database():
         -- Mutation Prompts Table (optional, if mutation prompts are predefined and stored)
         CREATE TABLE MutationPrompts (
             mutation_prompt_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            text TEXT
+            text TEXT NOT NULL,
+            generation INTEGER NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            run_id INTEGER NOT NULL,
+            prompt_id INTEGER NOT NULL,
+            FOREIGN KEY (run_id) REFERENCES Runs (run_id),
+            FOREIGN KEY (prompt_id) REFERENCES Prompts (prompt_id)
         );
         """)
         conn.commit()
@@ -163,7 +169,7 @@ def main():
     print(run_details)
 
     prompt_mutant = PromptMutant()
-    prompt_mutant.initialization(run_details[4], run_details[5], run_details[1])
+    prompt_mutant.initialization(run_details[0], run_details[4], run_details[5], run_details[1])
 
     # # Mutate n times
     for j in range(run_details[6]):

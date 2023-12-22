@@ -7,6 +7,9 @@ from datasets import load_dataset
 import random
 from pprint import pprint
 from .llm import openai_chat, openai_instruct
+import sqlite3
+from datetime import datetime
+
 
 def prompt_similarity_filer(prompt_population):
     pp = prompt_population.copy()
@@ -126,8 +129,15 @@ class PromptMutant:
         self.training_dataset = []
         self.problem_description = "Solve the math word problem, giving your answer as an arabic numeral"
         self.llm = openai_instruct
+        self.run_id = None
+        self.conn = sqlite3.connect('promptbreeder.db')
+        self.cursor = self.conn.cursor()
+    
+    def __del__(self):
+        self.conn.close()
 
-    def initialization(self, problem_description, number_of_prompts, dataset):
+    def initialization(self, run_id, problem_description, number_of_prompts, dataset):
+        self.run_id = run_id
         self.training_dataset = load_dataset(dataset, "main")["train"]
         for i in range(number_of_prompts):
             thinking_style = random.choice(self.thinking_styles)
@@ -135,7 +145,31 @@ class PromptMutant:
             prompt = thinking_style + " " + mutation_prompt + " " + "\nINSTRUCTION: " + problem_description + "\nINSTRUCTION MUTANT = "
             response = self.llm(prompt)
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population.append((response, mutation_prompt, score))
+            self.write_prompt_to_db(response, mutation_prompt, score, 0, self.run_id)
+
+    def write_prompt_to_db(self, response, mutation_prompt, score, generation, run_id):
+        current_datetime = datetime.now()
+        timestamp_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        self.cursor.execute("INSERT INTO Prompts (text, generation, created_at, run_id) VALUES (?, ?, ?, ?)",
+                            (response, generation, timestamp_str, run_id))
+        prompt_id = self.cursor.lastrowid
+        self.cursor.execute("INSERT INTO FitnessScores (prompt_id, run_id, score, scored_at) VALUES(?, ?, ?, ?)",
+                            (prompt_id, run_id, score, timestamp_str))
+        self.cursor.execute("INSERT INTO MutationPrompts (text, generation, created_at, run_id, prompt_id) VALUES (?, ?, ?, ?, ?)",
+                            (mutation_prompt, generation, timestamp_str, run_id, prompt_id))
+        self.conn.commit()
+
+    ## Output: (prompt, mutation, score, prompt_id, mutation_id, score_id)
+    def read_prompts_from_db(self, generation_index):
+        self.cursor.execute("""
+            SELECT p.text, mp.text, fs.score, p.prompt_id, fs.score_id, mp.mutation_prompt_id
+            FROM Prompts p
+            JOIN FitnessScores fs ON p.prompt_id = fs.prompt_id
+            JOIN MutationPrompts mp ON p.prompt_id = mp.prompt_id
+            WHERE p.generation = ?
+        """, (generation_index,))
+        results = self.cursor.fetchall()
+        return(results)
 
     #TODO: test this !!!
     def zero_order_prompt_generation(self, problem_description):
@@ -204,57 +238,57 @@ class PromptMutant:
         # 10% chance to perform crossover
         if random.random() < 0.1:
             # Select another gene based on fitness proportionate selection
-            fitness_scores = [gene[2] for gene in self.population]
+            fitness_scores = [gene[2] for gene in self.read_prompts_from_db()]
             total_fitness = sum(fitness_scores)
             probabilities = [score / total_fitness for score in fitness_scores]
-            selected_gene_index = np.random.choice(range(len(self.population)), p=probabilities)
+            selected_gene_index = np.random.choice(range(len(self.read_prompts_from_db())), p=probabilities)
 
             # Perform crossover: replace task-prompt of current gene with that of selected gene
-            selected_gene = self.population[selected_gene_index]
-            current_gene = self.population[gene_index]
-            self.population[gene_index] = (selected_gene[0], current_gene[1], current_gene[2])   
+            selected_gene = self.read_prompts_from_db()[selected_gene_index]
+            current_gene = self.read_prompts_from_db()[gene_index]
+            self.read_prompts_from_db()[gene_index] = (selected_gene[0], current_gene[1], current_gene[2])   
 
     def mutate(self, gene_index):
-        gene = self.population[gene_index]
+        gene = self.read_prompts_from_db()[gene_index]
         random_number = random.randint(0, 7)
         if random_number == 0:
-            response = self.eda_prompt_mutation(self.population)
+            response = self.eda_prompt_mutation(self.read_prompts_from_db())
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population[gene_index] = (response, gene[1], score)
+            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 1:
             response = self.first_order_prompt_generation(gene[0], gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population[gene_index] = (response, gene[1], score)
+            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 2:
-            response = self.eda_rank_and_index_mutation(self.population, gene[1])
+            response = self.eda_rank_and_index_mutation(self.read_prompts_from_db(), gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population[gene_index] = (response, gene[1], score)
+            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 3:
             response = self.lamarckian_mutation(gene[0])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population[gene_index] = (response, gene[1], score)
+            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
             pass
         elif random_number == 4:
             response, mutation_p  = self.zero_order_hyper_mutation(self.problem_description, gene[0])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population[gene_index] = (response, mutation_p, score)
+            self.read_prompts_from_db()[gene_index] = (response, mutation_p, score)
             pass
         elif random_number == 5:
             response, mutation_p = self.first_order_hyper_mutation(gene[0], gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population[gene_index] = (response, mutation_p, score)
+            self.read_prompts_from_db()[gene_index] = (response, mutation_p, score)
             pass
         elif random_number == 6:
-            response = self.lineage_mutation(self.population)
+            response = self.lineage_mutation(self.read_prompts_from_db())
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population[gene_index] = (response, gene[1], score)
+            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
         else:
             response = self.zero_order_prompt_generation(self.problem_description)
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.population[gene_index] = (response, gene[1], score)
+            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
             pass
         self.prompt_crossover(gene_index)
 

@@ -2,7 +2,7 @@ import os
 import openai
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from .fitness import cosine_similarity_score, bert_encode
+from .fitness import cosine_similarity_score, bert_encode, gsm8k_score
 from datasets import load_dataset
 import random
 from pprint import pprint
@@ -144,7 +144,7 @@ class PromptMutant:
             mutation_prompt = random.choice(self.mutation_prompt)
             prompt = thinking_style + " " + mutation_prompt + " " + "\nINSTRUCTION: " + problem_description + "\nINSTRUCTION MUTANT = "
             response = self.llm(prompt)
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.write_prompt_to_db(response, mutation_prompt, score, 0, self.run_id)
 
     def write_prompt_to_db(self, response, mutation_prompt, score, generation, run_id):
@@ -288,41 +288,41 @@ class PromptMutant:
         random_number = random.randint(0, 7)
         if random_number == 0:
             response = self.eda_prompt_mutation(self.read_prompts_from_db(generation, self.run_id))
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.update_prompt_from_db(response, score, generation+1 , prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 1:
             response = self.first_order_prompt_generation(gene[0], gene[1])
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 2:
             response = self.eda_rank_and_index_mutation(self.read_prompts_from_db(generation, self.run_id), gene[1])
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 3:
             response = self.lamarckian_mutation(gene[0])
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 4:
             response, mutation_p  = self.zero_order_hyper_mutation(self.problem_description, gene[0])
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.hyper_update_prompt_from_db(response, mutation_p, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 5:
             response, mutation_p = self.first_order_hyper_mutation(gene[0], gene[1])
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.hyper_update_prompt_from_db(response, mutation_p, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 6:
             response = self.lineage_mutation(self.read_prompts_from_db(generation, self.run_id))
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
         else:
             response = self.zero_order_prompt_generation(self.problem_description)
-            score = cosine_similarity_score(response, self.training_dataset, self.llm)
+            score = gsm8k_score(response, self.training_dataset, self.llm)
             self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         # TODO rewite this for sqlite

@@ -6,6 +6,7 @@ from datasets import load_dataset
 import torch
 import logging
 import random
+import re
 
 def bert_encode(texts):
     logging.getLogger("transformers.configuration_utils").setLevel(logging.ERROR)
@@ -37,6 +38,40 @@ def cosine_similarity_score(prompt, training_set, llm):
         
     average_similarity = total_similarity / len(question_set)
     return average_similarity
+
+## Code forked from https://github.com/openai/grade-school-math/blob/master/grade_school_math/dataset.py
+ANS_RE = re.compile(r"#### (\-?[0-9\.\,]+)")
+INVALID_ANS = "[invalid]"
+
+def extract_answer(completion):
+    match = ANS_RE.search(completion)
+    if match:
+        match_str = match.group(1).strip()
+        match_str = match_str.replace(",", "")
+        return match_str
+    else:
+        return INVALID_ANS
+
+def is_correct(model_completion, gt_example):
+    gt_answer = extract_answer(gt_example)
+    assert gt_answer != INVALID_ANS
+    return extract_answer(model_completion) == gt_answer
+
+def gsm8k_score(prompt, training_set, llm):
+    seed = random.randint(0, 1000000)
+    shuffled_set = training_set.shuffle(seed=seed)
+    question_set = shuffled_set["question"][:5]
+    answer_set = shuffled_set["answer"][:5]
+
+    score = 0
+    for i, question in enumerate(question_set):
+        response = llm(prompt + "\n" + question)
+        if is_correct(response, answer_set[i]):
+            score += 1
+            print("Model got it right!!!")
+        else:
+            print("Model got it wrong")
+    return score
 
 if __name__ == "__main__":
     prompt = "Think out-loud while you answer the question"

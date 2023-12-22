@@ -6,7 +6,7 @@ from .fitness import cosine_similarity_score, bert_encode
 from datasets import load_dataset
 import random
 from pprint import pprint
-from .llm import openai_chat, openai_instruct
+from .llm import openai_chat, openai_instruct, ollama_chat
 import sqlite3
 from datetime import datetime
 
@@ -128,7 +128,7 @@ class PromptMutant:
         self.population = [] ## (prompt, mutation, score)
         self.training_dataset = []
         self.problem_description = "Solve the math word problem, giving your answer as an arabic numeral"
-        self.llm = openai_instruct
+        self.llm = ollama_chat
         self.run_id = None
         self.conn = sqlite3.connect('promptbreeder.db')
         self.cursor = self.conn.cursor()

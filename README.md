@@ -26,4 +26,4 @@ promptmutant -prompt "Think out-loud while you answer the question" -dataset "gs
 - [x] Prompt Crossover
 - [ ] Context Shuffling
 - [ ] Design Additional Reward Functions
-- [ ] Ollama Local LLM Integration
+- [x] Ollama Local LLM Integration

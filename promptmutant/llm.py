@@ -1,7 +1,11 @@
 import os
 import openai
+import requests
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
+
 
 def openai_chat(prompt, model="gpt-3.5-turbo"):
     system="You are a helpful assistant."
@@ -25,4 +29,13 @@ def openai_instruct(prompt, model="gpt-3.5-turbo-instruct"):
     )
     return completion.choices[0].text
 
-
+def ollama_chat(prompt, model="mistral"):
+    data = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False
+    }
+    response = requests.post(OLLAMA_API_URL, json=data)
+    response_data = response.json()
+    o = response_data.get("response", "") 
+    return o

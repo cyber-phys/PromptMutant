@@ -23,7 +23,7 @@ promptmutant -prompt "Solve the math word problem, giving your answer as an arab
 - [x] Zero-order Hyper-Mutation
 - [x] First-order Hyper-Mutation
 - [x] Lamarckian Mutation
-- [x] Prompt Crossover
+- [ ] Prompt Crossover
 - [ ] Context Shuffling
 - [x] Design Additional Reward Functions
 - [x] Ollama Local LLM Integration

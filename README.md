@@ -9,7 +9,7 @@ pip install -e .
 
 ## Usage
 ```
-promptmutant -prompt "Think out-loud while you answer the question" -dataset "gsm8k" -nPrompts 3 -nMutations 10
+promptmutant -prompt "Solve the math word problem, giving your answer as an arabic numeral." -dataset "gsm8k" -nPrompts 3 -nMutations 10
 ```
 
 # Roadmap

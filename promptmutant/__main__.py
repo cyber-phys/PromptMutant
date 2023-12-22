@@ -189,7 +189,8 @@ def main():
     # # Mutate n times
     for j in range(run_details[6]):
         print("\033[91m Generation: \033[0m", j)
-        for i, gene in enumerate(prompt_mutant.read_prompts_from_db(j, prompt_mutant.run_id)):
+        p = prompt_mutant.read_prompts_from_db(j, prompt_mutant.run_id)
+        for i, gene in enumerate(p):
             prompt_mutant.mutate(i,j)
         clear_output(wait=True)
 

@@ -289,8 +289,8 @@ class PromptMutant:
         gene = self.read_prompts_from_db(generation, self.run_id)[gene_index]
         print(gene)
         prompt_id = gene[3]
-        mutation_id = gene[4]
-        score_id = gene[5]
+        score_id = gene[4]
+        mutation_id = gene[5]
         random_number = random.randint(0, 7)
         if random_number == 0:
             response = self.eda_prompt_mutation(self.read_prompts_from_db(generation, self.run_id))

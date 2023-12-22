@@ -182,15 +182,11 @@ def main():
     # # Mutate n times
     for j in range(run_details[6]):
         print("\033[91m Generation: \033[0m", j)
-        for i, gene in enumerate(prompt_mutant.population):
-            prompt_mutant.mutate(i)
+        for i, gene in enumerate(prompt_mutant.read_prompts_from_db(j, prompt_mutant.run_id)):
+            prompt_mutant.mutate(i,j)
         clear_output(wait=True)
-        for z, gene in enumerate(prompt_mutant.population):
+        for z, gene in enumerate(prompt_mutant.read_prompts_from_db(j, prompt_mutant.run_id)):
           pprint("\033[94m{}\033[0m".format(gene))
-    
-    # Print Evolved Prompts
-    for i, gene in enumerate(prompt_mutant.population):
-            print("\033[94m{}\033[0m".format(gene))
 
 if __name__ == "__main__":
     main()

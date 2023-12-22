@@ -146,7 +146,6 @@ class PromptMutant:
             response = self.llm(prompt)
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.write_prompt_to_db(response, mutation_prompt, score, 0, self.run_id)
-            print(self.read_prompts_from_db(0))
 
     def write_prompt_to_db(self, response, mutation_prompt, score, generation, run_id):
         current_datetime = datetime.now()
@@ -162,14 +161,14 @@ class PromptMutant:
         self.conn.commit()
 
     ## Output: (prompt, mutation, score, prompt_id, mutation_id, score_id)
-    def read_prompts_from_db(self, generation_index):
+    def read_prompts_from_db(self, generation_index, run_id):
         self.cursor.execute("""
             SELECT p.text, mp.text, fs.score, p.prompt_id, fs.score_id, mp.mutation_prompt_id
             FROM Prompts p
-            JOIN FitnessScores fs ON p.prompt_id = fs.prompt_id
-            JOIN MutationPrompts mp ON p.mutation_prompt_id = mp.mutation_prompt_id
-            WHERE p.generation = ?
-        """, (generation_index,))
+            JOIN FitnessScores fs ON p.prompt_id = fs.prompt_id AND p.run_id = fs.run_id
+            JOIN MutationPrompts mp ON p.mutation_prompt_id = mp.mutation_prompt_id AND p.run_id = mp.run_id
+            WHERE p.generation = ? AND p.run_id = ?
+        """, (generation_index, run_id))
         results = self.cursor.fetchall()
         return(results)
     
@@ -280,47 +279,51 @@ class PromptMutant:
             current_gene = self.read_prompts_from_db()[gene_index]
             self.read_prompts_from_db()[gene_index] = (selected_gene[0], current_gene[1], current_gene[2])   
 
-    def mutate(self, gene_index):
-        gene = self.read_prompts_from_db()[gene_index]
+    def mutate(self, gene_index, generation):
+        gene = self.read_prompts_from_db(generation, self.run_id)[gene_index]
+        print(gene)
+        prompt_id = gene[3]
+        mutation_id = gene[4]
+        score_id = gene[5]
         random_number = random.randint(0, 7)
         if random_number == 0:
-            response = self.eda_prompt_mutation(self.read_prompts_from_db())
+            response = self.eda_prompt_mutation(self.read_prompts_from_db(generation, self.run_id))
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
+            self.update_prompt_from_db(response, score, generation+1 , prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 1:
             response = self.first_order_prompt_generation(gene[0], gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
+            self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 2:
-            response = self.eda_rank_and_index_mutation(self.read_prompts_from_db(), gene[1])
+            response = self.eda_rank_and_index_mutation(self.read_prompts_from_db(generation, self.run_id), gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
+            self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 3:
             response = self.lamarckian_mutation(gene[0])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
+            self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 4:
             response, mutation_p  = self.zero_order_hyper_mutation(self.problem_description, gene[0])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.read_prompts_from_db()[gene_index] = (response, mutation_p, score)
+            self.hyper_update_prompt_from_db(response, mutation_p, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 5:
             response, mutation_p = self.first_order_hyper_mutation(gene[0], gene[1])
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.read_prompts_from_db()[gene_index] = (response, mutation_p, score)
+            self.hyper_update_prompt_from_db(response, mutation_p, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         elif random_number == 6:
-            response = self.lineage_mutation(self.read_prompts_from_db())
+            response = self.lineage_mutation(self.read_prompts_from_db(generation, self.run_id))
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
+            self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
         else:
             response = self.zero_order_prompt_generation(self.problem_description)
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
-            self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
+            self.update_prompt_from_db(response, score, generation+1, prompt_id, self.run_id, mutation_id)
             pass
         # TODO rewite this for sqlite
         # self.prompt_crossover(gene_index)

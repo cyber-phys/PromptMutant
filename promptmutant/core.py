@@ -146,8 +146,34 @@ class PromptMutant:
             response = self.llm(prompt)
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.write_prompt_to_db(response, mutation_prompt, score, 0, self.run_id)
+            print(self.read_prompts_from_db(0))
 
     def write_prompt_to_db(self, response, mutation_prompt, score, generation, run_id):
+        current_datetime = datetime.now()
+        timestamp_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        self.cursor.execute("INSERT INTO MutationPrompts (text, generation, created_at, run_id) VALUES (?, ?, ?, ?)",
+                            (mutation_prompt, generation, timestamp_str, run_id))
+        mutation_id = self.cursor.lastrowid
+        self.cursor.execute("INSERT INTO Prompts (text, generation, created_at, run_id, mutation_prompt_id) VALUES (?, ?, ?, ?, ?)",
+                            (response, generation, timestamp_str, run_id, mutation_id))
+        prompt_id = self.cursor.lastrowid
+        self.cursor.execute("INSERT INTO FitnessScores (prompt_id, run_id, score, scored_at) VALUES(?, ?, ?, ?)",
+                            (prompt_id, run_id, score, timestamp_str))
+        self.conn.commit()
+
+    ## Output: (prompt, mutation, score, prompt_id, mutation_id, score_id)
+    def read_prompts_from_db(self, generation_index):
+        self.cursor.execute("""
+            SELECT p.text, mp.text, fs.score, p.prompt_id, fs.score_id, mp.mutation_prompt_id
+            FROM Prompts p
+            JOIN FitnessScores fs ON p.prompt_id = fs.prompt_id
+            JOIN MutationPrompts mp ON p.mutation_prompt_id = mp.mutation_prompt_id
+            WHERE p.generation = ?
+        """, (generation_index,))
+        results = self.cursor.fetchall()
+        return(results)
+    
+    def update_prompt_from_db(self, response, score, prompt_id, generation, run_id):
         current_datetime = datetime.now()
         timestamp_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
         self.cursor.execute("INSERT INTO Prompts (text, generation, created_at, run_id) VALUES (?, ?, ?, ?)",
@@ -158,19 +184,6 @@ class PromptMutant:
         self.cursor.execute("INSERT INTO MutationPrompts (text, generation, created_at, run_id, prompt_id) VALUES (?, ?, ?, ?, ?)",
                             (mutation_prompt, generation, timestamp_str, run_id, prompt_id))
         self.conn.commit()
-
-    ## Output: (prompt, mutation, score, prompt_id, mutation_id, score_id)
-    def read_prompts_from_db(self, generation_index):
-        self.cursor.execute("""
-            SELECT p.text, mp.text, fs.score, p.prompt_id, fs.score_id, mp.mutation_prompt_id
-            FROM Prompts p
-            JOIN FitnessScores fs ON p.prompt_id = fs.prompt_id
-            JOIN MutationPrompts mp ON p.prompt_id = mp.prompt_id
-            WHERE p.generation = ?
-        """, (generation_index,))
-        results = self.cursor.fetchall()
-        return(results)
-
     #TODO: test this !!!
     def zero_order_prompt_generation(self, problem_description):
         prompt  = "A list of 100 hinits:\n" + problem_description
@@ -234,6 +247,7 @@ class PromptMutant:
         return response
     
     #TODO: test this !!!
+    #TODO: rewite this for sqlite
     def prompt_crossover(self, gene_index):
         # 10% chance to perform crossover
         if random.random() < 0.1:
@@ -290,7 +304,8 @@ class PromptMutant:
             score = cosine_similarity_score(response, self.training_dataset, self.llm)
             self.read_prompts_from_db()[gene_index] = (response, gene[1], score)
             pass
-        self.prompt_crossover(gene_index)
+        # TODO rewite this for sqlite
+        # self.prompt_crossover(gene_index)
 
 if __name__ == "__main__":
     problem_description = "Solve the math word problem, giving your answer as an arabic numeral"

@@ -33,6 +33,18 @@ def initialize_database():
             generation INTEGER NOT NULL,
             created_at TIMESTAMP NOT NULL,
             run_id INTEGER NOT NULL,
+            mutation_prompt_id INTEGER NOT NULL,
+            FOREIGN KEY (run_id) REFERENCES Runs (run_id),
+            FOREIGN KEY (mutation_prompt_id) REFERENCES MutationPrompts (mutation_prompt_id)
+        );
+
+        -- Mutation Prompts Table
+        CREATE TABLE MutationPrompts (
+            mutation_prompt_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            text TEXT NOT NULL,
+            generation INTEGER NOT NULL,
+            created_at TIMESTAMP NOT NULL,
+            run_id INTEGER NOT NULL,
             FOREIGN KEY (run_id) REFERENCES Runs (run_id)
         );
 
@@ -78,18 +90,6 @@ def initialize_database():
         CREATE TABLE ThinkingStyles (
             style_id INTEGER PRIMARY KEY AUTOINCREMENT,
             description TEXT
-        );
-
-        -- Mutation Prompts Table (optional, if mutation prompts are predefined and stored)
-        CREATE TABLE MutationPrompts (
-            mutation_prompt_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            text TEXT NOT NULL,
-            generation INTEGER NOT NULL,
-            created_at TIMESTAMP NOT NULL,
-            run_id INTEGER NOT NULL,
-            prompt_id INTEGER NOT NULL,
-            FOREIGN KEY (run_id) REFERENCES Runs (run_id),
-            FOREIGN KEY (prompt_id) REFERENCES Prompts (prompt_id)
         );
         """)
         conn.commit()

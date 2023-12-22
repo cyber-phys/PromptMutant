@@ -7,6 +7,7 @@ import torch
 import logging
 import random
 import re
+import sys
 
 def bert_encode(texts):
     logging.getLogger("transformers.configuration_utils").setLevel(logging.ERROR)
@@ -43,6 +44,10 @@ def cosine_similarity_score(prompt, training_set, llm):
 ANS_RE = re.compile(r"#### (\-?[0-9\.\,]+)")
 INVALID_ANS = "[invalid]"
 
+def check_last_line_for_number(text, x):
+    last_line = text.strip().split('\n')[-1]
+    return str(x) in last_line
+
 def extract_answer(completion):
     match = ANS_RE.search(completion)
     if match:
@@ -55,22 +60,26 @@ def extract_answer(completion):
 def is_correct(model_completion, gt_example):
     gt_answer = extract_answer(gt_example)
     assert gt_answer != INVALID_ANS
-    return extract_answer(model_completion) == gt_answer
+    # return extract_answer(model_completion) == gt_answer
+    return check_last_line_for_number(model_completion, gt_answer)
 
 def gsm8k_score(prompt, training_set, llm):
     seed = random.randint(0, 1000000)
     shuffled_set = training_set.shuffle(seed=seed)
     question_set = shuffled_set["question"][:5]
     answer_set = shuffled_set["answer"][:5]
-
     score = 0
     for i, question in enumerate(question_set):
         response = llm(prompt + "\n" + question)
         if is_correct(response, answer_set[i]):
             score += 1
-            print("Model got it right!!!")
+            sys.stdout.write("✅")
         else:
-            print("Model got it wrong")
+            sys.stdout.write("❌")
+        sys.stdout.flush()
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
     return score
 
 if __name__ == "__main__":

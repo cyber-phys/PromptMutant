@@ -192,8 +192,6 @@ def main():
         for i, gene in enumerate(prompt_mutant.read_prompts_from_db(j, prompt_mutant.run_id)):
             prompt_mutant.mutate(i,j)
         clear_output(wait=True)
-        for z, gene in enumerate(prompt_mutant.read_prompts_from_db(j, prompt_mutant.run_id)):
-          pprint("\033[94m{}\033[0m".format(gene))
 
 if __name__ == "__main__":
     main()

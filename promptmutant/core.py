@@ -9,6 +9,7 @@ from pprint import pprint
 from .llm import openai_chat, openai_instruct, ollama_chat
 import sqlite3
 from datetime import datetime
+import sys
 
 
 def prompt_similarity_filer(prompt_population):
@@ -139,13 +140,18 @@ class PromptMutant:
     def initialization(self, run_id, problem_description, number_of_prompts, dataset):
         self.run_id = run_id
         self.training_dataset = load_dataset(dataset, "main")["train"]
+        sys.stdout.write("Initializing Prompt Database...\n")
+        sys.stdout.flush()
         for i in range(number_of_prompts):
             thinking_style = random.choice(self.thinking_styles)
             mutation_prompt = random.choice(self.mutation_prompt)
             prompt = thinking_style + " " + mutation_prompt + " " + "\nINSTRUCTION: " + problem_description + "\nINSTRUCTION MUTANT = "
             response = self.llm(prompt)
+            sys.stdout.write(f"Scoring Prompt: {i}   ")
             score = gsm8k_score(response, self.training_dataset, self.llm)
             self.write_prompt_to_db(response, mutation_prompt, score, 0, self.run_id)
+        sys.stdout.write("Done Initializing Prompt Database\n")
+        sys.stdout.flush()
 
     def write_prompt_to_db(self, response, mutation_prompt, score, generation, run_id):
         current_datetime = datetime.now()

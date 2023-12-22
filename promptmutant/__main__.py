@@ -5,6 +5,7 @@ from IPython.display import clear_output
 from time import sleep
 import sqlite3
 import os
+from datetime import datetime
 
 def initialize_database():
     db_exists = os.path.exists('promptbreeder.db')
@@ -95,7 +96,7 @@ def insert_run(dataset_name, start_time, end_time, prompt, nPrompts, nMutations)
 
     cursor.execute("""
     INSERT INTO Runs (dataset_name, start_time, end_time, init_prompt, number_prompts, number_mutations)
-    VALUES (?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
     """, (dataset_name, start_time, end_time, prompt, nPrompts, nMutations))
 
     run_id = cursor.lastrowid
@@ -119,6 +120,7 @@ def main():
     parser.add_argument("-dataset", type=str, help="Name of dataset on huggingface for evaluation")
     parser.add_argument("-nPrompts", type=int, help="Number of prompts in the population")
     parser.add_argument("-nMutations", type=int, help="Number of times to run mutation")
+    parser.add_argument("-runId", type=int, help="Existing run ID to load", default=None)
     args = parser.parse_args()
 
     print("""                                               
@@ -147,12 +149,24 @@ def main():
     .;++::+xxxxxxxXxx++xXx;:xXx++:++xx+...,        
   .::::::::::::::::::::::::::::::::::::::::..
   ..............PROMPT MUTANT.................""")
+    
+    initialize_database()
+    # Check if a runId is provided, if not, create a new run
+    if args.runId is None:
+      current_datetime = datetime.now()
+      timestamp_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+      run_id = insert_run(args.dataset, timestamp_str, None, args.prompt, args.nPrompts, args.nMutations)
+    else:
+        run_id = args.runId
+    
+    run_details = get_run(run_id)
+    print(run_details)
 
     prompt_mutant = PromptMutant()
-    prompt_mutant.initialization(args.prompt, args.nPrompts, args.dataset)
+    prompt_mutant.initialization(run_details[4], run_details[5], run_details[1])
 
-    # Mutate n times
-    for j in range(args.nMutations):
+    # # Mutate n times
+    for j in range(run_details[6]):
         print("\033[91m Generation: \033[0m", j)
         for i, gene in enumerate(prompt_mutant.population):
             prompt_mutant.mutate(i)

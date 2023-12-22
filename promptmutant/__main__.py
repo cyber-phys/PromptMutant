@@ -6,6 +6,8 @@ from time import sleep
 import sqlite3
 import os
 from datetime import datetime
+import sys
+import signal
 
 def initialize_database():
     db_exists = os.path.exists('promptbreeder.db')
@@ -128,7 +130,12 @@ def get_run(run_id):
     conn.close()
     return run
 
+def signal_handler(sig, frame):
+    print('You pressed Ctrl+C!')
+    sys.exit(0)
+
 def main():
+    signal.signal(signal.SIGINT, signal_handler)
     parser = argparse.ArgumentParser(description="Run Promptbreeder")
     parser.add_argument("-prompt", type=str, help="Initial prompt for Promptbreeder")
     parser.add_argument("-dataset", type=str, help="Name of dataset on huggingface for evaluation")
